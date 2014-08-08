@@ -102,7 +102,9 @@ public class PacketHandler implements IListenDataPacket {
                 InetAddress addr = intToInetAddress(dstAddr);
                 System.out.println("Pkt. to " + addr.toString() + " received by node " + node.getNodeIDString() + " on connector " + ingressConnector.getNodeConnectorIDString());
                 String sourceMac = HexEncode.bytesToHexStringFormat(((Ethernet)l2pkt).getSourceMACAddress());
-                this.informPacketFence(sourceMac, node.getNodeIDString(), ingressConnector.getNodeConnectorIDString());
+                String switchId = node.getNodeIDString();
+                switchId = switchId.substring(0, 17);
+                this.informPacketFence(sourceMac, switchId, ingressConnector.getNodeConnectorIDString());
                 return PacketResult.KEEP_PROCESSING;
             }
         }
@@ -111,6 +113,9 @@ public class PacketHandler implements IListenDataPacket {
     }
     
     private boolean informPacketFence(String mac, String switchId, String port) {
+        //FIX ME. THIS IS STUPID AND INEFICIENT
+        final PFConfig pfConfig = new PFConfig("/etc/packetfence.conf");
+
     	TrustManager[] trustAllCerts = new TrustManager[]{
 		    new X509TrustManager() {
 		        public java.security.cert.X509Certificate[] getAcceptedIssuers() {
@@ -135,17 +140,17 @@ public class PacketHandler implements IListenDataPacket {
         {
             public boolean verify(String hostname, SSLSession session)
             {
-                if (hostname.equals("172.20.20.109"))
+                if (hostname.equals(pfConfig.getElement("host")))
                     return true;
                 return false;
             }
         });
     	
     	try{
-	    	String jsonBody = "{\"jsonrpc\": \"2.0\", \"id\": \"1\", \"method\": \"openflow_authorize\", \"params\": {\"mac\": \""+mac+"\", \"switch_ip\": \""+switchId+"\", \"port\": \""+port+"\"}}";
-	    	String request = "https://172.20.20.109:9090/";
+	    	String jsonBody = "{\"jsonrpc\": \"2.0\", \"id\": \"1\", \"method\": \"openflow_authorize\", \"params\": {\"mac\": \""+mac+"\", \"switch_id\": \""+switchId+"\", \"port\": \""+port+"\"}}";
+	    	String request = "https://"+pfConfig.getElement("host")+":"+pfConfig.getElement("port")+"/";
 	    	
-	    	String authentication = DatatypeConverter.printBase64Binary(new String("sexy:time").getBytes());
+	    	String authentication = DatatypeConverter.printBase64Binary(new String(pfConfig.getElement("user")+":"+pfConfig.getElement("pass")).getBytes());
 	    	System.out.println(authentication);
 	    	URL url = new URL(request); 
 	    	HttpsURLConnection connection = (HttpsURLConnection) url.openConnection();           
