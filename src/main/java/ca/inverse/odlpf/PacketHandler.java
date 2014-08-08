@@ -34,6 +34,8 @@ import javax.net.ssl.*;
 import javax.xml.bind.DatatypeConverter;
 
 import org.opendaylight.controller.sal.utils.HexEncode;
+import java.io.InputStreamReader;
+import java.io.BufferedReader;
  
 public class PacketHandler implements IListenDataPacket {
  
@@ -170,8 +172,14 @@ public class PacketHandler implements IListenDataPacket {
 	    	wr.close();
 	    	connection.disconnect();	
 	    	System.out.println(jsonBody);
-	    	int code = connection.getResponseCode();
-	    	System.out.println(code);
+
+            BufferedReader response = null;  
+            response = new BufferedReader(new InputStreamReader(connection.getInputStream()));
+            String line = null;
+            while ((line = response.readLine()) != null) {
+                System.out.println(line);
+            }
+
 	    	return true;
     	}
     	catch(Exception e){
